@@ -5,6 +5,10 @@ export type PlantCategory =
   | 'acelga'
   | 'zanahoria'
   | 'perejil'
+  | 'pimiento'
+  | 'lechuga'
+  | 'puerro'
+  | 'cebolla'
   | 'otro';
 
 export type PlantOrigin = 'comprada' | 'autogerminated' | 'siembra_directa';
@@ -32,6 +36,7 @@ export type AlertType =
   | 'bulb_rot';
 
 export interface Plant {
+  quantity?: number; // número de ejemplares (opcional, para mostrar en UI)
   id: string;
   name: string;
   category: PlantCategory;

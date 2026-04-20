@@ -454,6 +454,243 @@ function alertsPerejil(plant: Plant, weather: WeatherData | null): Warning[] {
 }
 
 // ---------------------------------------------------------------------------
+// 🫑 PIMIENTO
+// ---------------------------------------------------------------------------
+
+function alertsPimiento(plant: Plant, weather: WeatherData | null): Warning[] {
+  const alerts: Warning[] = [];
+  const t = today();
+
+  // Riesgo helada hasta 15 mayo (igual de sensible que el tomate)
+  if (isBefore(t, FROST_SAFE_DATE)) {
+    alerts.push(w(plant.id, 'frost_risk', 'alto',
+      'Riesgo de helada hasta mediados de mayo',
+      'El pimiento es tan sensible a las heladas como el tomate. Una noche bajo 0 °C mata la planta. En Urretxu el riesgo persiste hasta el 15 de mayo.',
+      'Cubre con agrofilm o vellón en noches frías (< 5 °C). Retira durante el día para que reciba sol y se airee.'));
+  }
+
+  // Tutoraje cuando supera cierta altura
+  if ((plant.heightCm ?? 0) > 35) {
+    alerts.push(w(plant.id, 'staking_needed', 'bajo',
+      'Tutoraje recomendado',
+      `Con ${plant.heightCm} cm el pimiento puede doblarse con el viento o el peso de los frutos.`,
+      'Coloca una estaca o anillo de soporte. Los pimientos de Gernika especialmente tienden a abrirse hacia los lados.'));
+  }
+
+  if (!weather) return alerts;
+
+  const tMin = minTemp(weather);
+  const tMax = maxTemp(weather);
+  const rain = totalRain(weather);
+  const maxRain = maxDailyRain(weather);
+
+  // Helada real prevista
+  if (tMin <= 0) {
+    alerts.push(w(plant.id, 'frost_risk', 'alto',
+      `Helada prevista (${tMin.toFixed(1)} °C)`,
+      'Temperatura bajo cero prevista. El pimiento muere irremediablemente con heladas.',
+      'Lleva la planta al interior o cúbrela con doble capa de agrofilm antes de la noche.',
+      'weather'));
+  } else if (tMin <= 3 && isBefore(t, FROST_SAFE_DATE)) {
+    alerts.push(w(plant.id, 'frost_risk', 'alto',
+      `Temperatura nocturna muy baja (${tMin.toFixed(1)} °C)`,
+      'Temperaturas tan próximas a 0 °C dañan los tejidos del pimiento, especialmente flores y puntos de crecimiento.',
+      'Protege con agrofilm o vellón durante la noche.',
+      'weather'));
+  }
+
+  // Calor elevado → caída de flores
+  if (tMax > 35) {
+    alerts.push(w(plant.id, 'flower_drop', 'medio',
+      `Calor extremo — caída de flores (${tMax.toFixed(0)} °C)`,
+      'Por encima de 35 °C el pimiento deja de cuajar: las flores abortan y el fruto no se forma.',
+      'Riega abundantemente. Sombrea al mediodía. El pimiento de Gernika es especialmente sensible al calor extremo.',
+      'weather'));
+  }
+
+  // Frío nocturno en verano → mal cuaje
+  if (!isBefore(t, FROST_SAFE_DATE) && tMin < 12) {
+    alerts.push(w(plant.id, 'flower_drop', 'bajo',
+      `Noches frescas — cuaje reducido (${tMin.toFixed(1)} °C)`,
+      'El pimiento necesita noches de al menos 15 °C para cuajar bien. Por debajo de 12 °C el cuaje se reduce notablemente.',
+      'Si las noches son frías de forma prolongada, cubre con agrofilm por la noche para mantener el calor acumulado.',
+      'weather'));
+  }
+
+  // Lluvia excesiva → hongos
+  if (maxRain > 10 || rain > 35) {
+    alerts.push(w(plant.id, 'fungal_risk', 'medio',
+      'Humedad elevada — riesgo de botrytis y podredumbre',
+      `Con ${rain.toFixed(0)} mm en 7 días y temperaturas suaves, el pimiento puede desarrollar botrytis (podredumbre gris) en flores y frutos.`,
+      'Revisa flores y frutos. Retira cualquier parte afectada. Evita mojar el follaje al regar. Buena ventilación entre plantas.',
+      'weather'));
+  }
+
+  // Encharcamiento con suelo arcilloso
+  if (maxRain > 15 && plant.soilType === 'jardin_arcilloso') {
+    alerts.push(w(plant.id, 'overwatering_clay', 'medio',
+      `Lluvia intensa — riesgo de asfixia radicular (${maxRain.toFixed(0)} mm / día)`,
+      'El pimiento es muy sensible a la asfixia radicular. El suelo arcilloso empapado puede matar la planta en 24-48h.',
+      'Comprueba que el bancal drena correctamente. Si el agua se estanca más de 1 hora, haz un surco de drenaje lateral.',
+      'weather'));
+  }
+
+  alerts.push(...checkWind(plant, weather));
+  alerts.push(...checkSnow(plant, weather));
+
+  return alerts;
+}
+
+// ---------------------------------------------------------------------------
+// 🥗 LECHUGA
+// ---------------------------------------------------------------------------
+
+function alertsLechuga(plant: Plant, weather: WeatherData | null): Warning[] {
+  const alerts: Warning[] = [];
+
+  if (!weather) return alerts;
+
+  const tMax = maxTemp(weather);
+  const tMin = minTemp(weather);
+  const rain = totalRain(weather);
+
+  // Espigado por calor (umbral más bajo que acelga)
+  if (tMax > 23) {
+    const level = tMax > 28 ? 'alto' : 'medio';
+    alerts.push(w(plant.id, 'bolting_risk', level,
+      `Riesgo de espigado por calor (${tMax.toFixed(0)} °C)`,
+      `La lechuga espiga (sube a flor) con temperaturas por encima de 22-24 °C sostenidas, especialmente si el suelo se seca. Las hojas se vuelven amargas e inconsumibles.`,
+      'Cosecha las lechugas más desarrolladas antes de que espiguen. Riega frecuentemente para mantener el suelo fresco. Sombrea con malla al mediodía si el calor persiste.',
+      'weather'));
+  }
+
+  // Helada: la lechuga aguanta heladas suaves pero no intensas
+  if (tMin < -3) {
+    alerts.push(w(plant.id, 'frost_risk', 'medio',
+      `Helada intensa — lechuga en riesgo (${tMin.toFixed(1)} °C)`,
+      'La lechuga tolera heladas suaves (-1, -2 °C) pero por debajo de -3 °C las hojas se queman y la planta puede morir.',
+      'Cubre con vellón o agrofilm en las noches más frías. Retira durante el día.',
+      'weather'));
+  }
+
+  // Lluvia continua → babosas (gran amenaza para lechuga)
+  if (rain > 30) {
+    alerts.push(w(plant.id, 'slug_risk', 'medio',
+      `Lluvia continua — babosas (${rain.toFixed(0)} mm / 7 días)`,
+      'Las babosas son el enemigo número uno de la lechuga, especialmente con plantas pequeñas. Atacan de noche y pueden devorar una planta entera en pocas horas.',
+      'Revisa al amanecer. Coloca ferramol granulado alrededor del bancal. Una barrera de ceniza seca o cáscaras de huevo también ayuda si no llueve.',
+      'weather'));
+  }
+
+  // Sequía → estrés hídrico rápido (planta pequeña con raíz superficial)
+  if (rain < 3 && tMax > 18) {
+    alerts.push(w(plant.id, 'drought_stress', 'medio',
+      'Sin lluvia — la lechuga necesita riego frecuente',
+      'La lechuga tiene raíces superficiales y se estrés rápidamente sin agua, lo que acelera el espigado.',
+      'Riega cada 1-2 días. Aplica mulching de paja para mantener la humedad del suelo.',
+      'weather'));
+  }
+
+  return alerts;
+}
+
+// ---------------------------------------------------------------------------
+// 🌱 PUERRO
+// ---------------------------------------------------------------------------
+
+function alertsPuerro(plant: Plant, weather: WeatherData | null): Warning[] {
+  const alerts: Warning[] = [];
+
+  // Suelo arcilloso: en realidad el puerro lo tolera, aviso informativo
+  if (plant.soilType === 'jardin_arcilloso') {
+    alerts.push(w(plant.id, 'overwatering_clay', 'bajo',
+      'Suelo arcilloso — aporcar para blanquear',
+      'El puerro tolera bien el suelo pesado, pero recuerda aporcar (cubrir con tierra el tallo blanco) a medida que crece para obtener más parte comestible.',
+      'Aporcar cada 2-3 semanas añadiendo tierra alrededor del tallo. El puerro agradece un riego regular pero no el encharcamiento.'));
+  }
+
+  if (!weather) return alerts;
+
+  const rain = totalRain(weather);
+  const tMax = maxTemp(weather);
+
+  // Lluvia excesiva + calor → roya del puerro
+  if (rain > 40 && tMax > 16) {
+    alerts.push(w(plant.id, 'fungal_risk', 'medio',
+      'Humedad + calor — riesgo de roya del puerro',
+      `Con ${rain.toFixed(0)} mm de lluvia y temperaturas de ${tMax.toFixed(0)} °C aparecen manchas anaranjadas en las hojas (roya). No destruye la planta pero reduce la cosecha.`,
+      'Revisa las hojas. Si ves manchas anaranjadas, retira las hojas afectadas. Evita mojar el follaje al regar. Buena separación entre plantas para ventilar.',
+      'weather'));
+  }
+
+  // Sequía en verano → crecimiento lento
+  if (rain < 3 && tMax > 20) {
+    alerts.push(w(plant.id, 'drought_stress', 'bajo',
+      'Poca lluvia — riego necesario para el desarrollo',
+      'El puerro en su fase de engorde necesita humedad constante. La sequía ralentiza el crecimiento y reduce el tamaño del tallo.',
+      'Riega cada 3-4 días. El mulching ayuda mucho a conservar la humedad en verano.',
+      'weather'));
+  }
+
+  alerts.push(...checkSnow(plant, weather));
+
+  return alerts;
+}
+
+// ---------------------------------------------------------------------------
+// 🧅 CEBOLLA
+// ---------------------------------------------------------------------------
+
+function alertsCebolla(plant: Plant, weather: WeatherData | null): Warning[] {
+  const alerts: Warning[] = [];
+
+  // Suelo arcilloso → riesgo pudrición bulbo
+  if (plant.soilType === 'jardin_arcilloso') {
+    alerts.push(w(plant.id, 'bulb_rot', 'medio',
+      'Suelo arcilloso — riesgo de pudrición del bulbo',
+      'La cebolla es muy sensible al exceso de humedad en el suelo. La arcilla retiene agua y puede provocar la pudrición del bulbo por hongos (Fusarium, Botrytis).',
+      'Asegura buen drenaje. Incorpora arena gruesa o perlita. No riegues en exceso, especialmente en la fase de bulbificación (julio).'));
+  }
+
+  if (!weather) return alerts;
+
+  const rain = totalRain(weather);
+  const maxRain = maxDailyRain(weather);
+  const tMax = maxTemp(weather);
+
+  // Lluvia excesiva → pudrición del bulbo
+  if (maxRain > 15 || rain > 50) {
+    alerts.push(w(plant.id, 'bulb_rot', 'alto',
+      `Lluvia excesiva — riesgo de pudrición del bulbo (${rain.toFixed(0)} mm / 7 días)`,
+      'El exceso de agua es el mayor peligro para la cebolla. Con suelo arcilloso empapado el bulbo puede pudrirse en pocos días.',
+      'Suspende el riego completamente. Si el bancal se encharca, crea un surco de drenaje. Revisa que el cuello de la planta no esté en contacto con suelo muy húmedo.',
+      'weather'));
+  }
+
+  // Mildiu con humedad y calor moderado
+  if (rain > 25 && tMax > 14 && tMax < 25) {
+    alerts.push(w(plant.id, 'fungal_risk', 'medio',
+      'Humedad — riesgo de mildiu de la cebolla',
+      `Las condiciones de lluvia (${rain.toFixed(0)} mm) y temperatura suave favorecen el mildiu, que aparece como manchas blancas-violáceas en las hojas.`,
+      'Revisa las hojas. Si ves síntomas, aplica cobre preventivo. Evita regar por las hojas. Buena ventilación entre plantas.',
+      'weather'));
+  }
+
+  // Calor en bulbificación → maduración precoz
+  if (tMax > 28) {
+    alerts.push(w(plant.id, 'heat_stress', 'bajo',
+      `Calor elevado — maduración acelerada (${tMax.toFixed(0)} °C)`,
+      'Con calor intenso la cebolla entra antes en maduración. Las hojas se doblarán antes de lo previsto.',
+      'Cuando las hojas se doblen solas por la mitad, es señal de cosecha. No riegues las últimas 2 semanas antes de cosechar.',
+      'weather'));
+  }
+
+  alerts.push(...checkSnow(plant, weather));
+
+  return alerts;
+}
+
+// ---------------------------------------------------------------------------
 // GENÉRICAS (aplican a cualquier planta)
 // ---------------------------------------------------------------------------
 
@@ -507,13 +744,17 @@ export function generateAlerts(plants: Plant[], weather: WeatherData | null): Wa
 
   for (const plant of plants) {
     switch (plant.category) {
-      case 'tomate':   all.push(...alertsTomate(plant, weather)); break;
-      case 'fresa':    all.push(...alertsFresa(plant, weather)); break;
-      case 'ajo':      all.push(...alertsAjo(plant, weather)); break;
-      case 'acelga':   all.push(...alertsAcelga(plant, weather)); break;
+      case 'tomate':    all.push(...alertsTomate(plant, weather)); break;
+      case 'fresa':     all.push(...alertsFresa(plant, weather)); break;
+      case 'ajo':       all.push(...alertsAjo(plant, weather)); break;
+      case 'acelga':    all.push(...alertsAcelga(plant, weather)); break;
       case 'zanahoria': all.push(...alertsZanahoria(plant, weather)); break;
-      case 'perejil':  all.push(...alertsPerejil(plant, weather)); break;
-      default:         all.push(...alertsGenericas(plant, weather)); break;
+      case 'perejil':   all.push(...alertsPerejil(plant, weather)); break;
+      case 'pimiento':  all.push(...alertsPimiento(plant, weather)); break;
+      case 'lechuga':   all.push(...alertsLechuga(plant, weather)); break;
+      case 'puerro':    all.push(...alertsPuerro(plant, weather)); break;
+      case 'cebolla':   all.push(...alertsCebolla(plant, weather)); break;
+      default:          all.push(...alertsGenericas(plant, weather)); break;
     }
   }
 

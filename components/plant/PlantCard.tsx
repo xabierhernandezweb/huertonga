@@ -47,7 +47,12 @@ export function PlantCard({ plant, warnings, weather }: Props) {
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-2xl shrink-0" title={catalog.displayName}>{catalog.icon}</span>
-              <CardTitle className="text-base leading-tight truncate">{plant.name}</CardTitle>
+              <div className="min-w-0">
+                <CardTitle className="text-base leading-tight truncate">{plant.name}</CardTitle>
+                {plant.quantity && plant.quantity > 1 && (
+                  <p className="text-xs text-muted-foreground">{plant.quantity} plantas</p>
+                )}
+              </div>
             </div>
             {warnings.length > 0 ? (
               <Tooltip>

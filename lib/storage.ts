@@ -2,7 +2,7 @@ import { AppState, Plant, WeatherData } from './types';
 import { INITIAL_PLANTS } from './constants';
 
 const STORAGE_KEY = 'huertonga_state';
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2; // v2: nuevas plantas 18-abr + categorías pimiento/lechuga/puerro/cebolla
 
 function defaultState(): AppState {
   return {

@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils';
 
 const schema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio').max(60),
-  category: z.enum(['tomate', 'fresa', 'ajo', 'acelga', 'zanahoria', 'perejil', 'otro'] as const),
+  category: z.enum(['tomate', 'fresa', 'ajo', 'acelga', 'zanahoria', 'perejil', 'pimiento', 'lechuga', 'puerro', 'cebolla', 'otro'] as const),
   origin: z.enum(['comprada', 'autogerminated', 'siembra_directa'] as const),
   heightCm: z.string().optional(),
   bedNumber: z.enum(['1', '2', '3', '4'] as const),
