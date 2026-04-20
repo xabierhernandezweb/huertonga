@@ -20,7 +20,8 @@ export function loadAppState(): AppState {
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw) as AppState;
     if (!parsed.schemaVersion || parsed.schemaVersion < SCHEMA_VERSION) {
-      return { ...defaultState(), plants: parsed.plants ?? INITIAL_PLANTS };
+      // Schema outdated → reset con las plantas por defecto actualizadas
+      return defaultState();
     }
     return parsed;
   } catch {
